@@ -34,45 +34,90 @@ using namespace std;
 
 // IMP: Change the file directories (4 places) according to where your dataset is saved before running!
 
-double getAbsoluteScale(int frame_id, int sequence_id, double z_cal)	{
-  
-  string line;
-  int i = 0;
-  ifstream myfile ("/home/avisingh/Datasets/KITTI_VO/00.txt");
-  double x =0, y=0, z = 0;
-  double x_prev, y_prev, z_prev;
-  if (myfile.is_open())
+void output(const Mat& R, const Mat& t, ostream& ofile=cout)
+{
+
+  R.convertTo(R, CV_64F); 
+  t.convertTo(t, CV_64F);
+  for(int i=0; i<3; i++)
   {
-    while (( getline (myfile,line) ) && (i<=frame_id))
+    for(int j=0; j<3; j++)
     {
-      z_prev = z;
-      x_prev = x;
-      y_prev = y;
-      std::istringstream in(line);
-      //cout << line << '\n';
-      for (int j=0; j<12; j++)  {
-        in >> z ;
-        if (j==7) y=z;
-        if (j==3)  x=z;
-      }
+      ofile<<R.at<double>(i,j);
       
-      i++;
+      ofile<<" "; 
     }
-    myfile.close();
   }
 
-  else {
-    cout << "Unable to open file";
-    return 0;
+  for(int i=0; i<3; i++)
+  {
+    ofile<<t.at<double>(0, i);
+    if(i<2) ofile<<" ";
+    else ofile<<endl;
   }
-
-  return sqrt((x-x_prev)*(x-x_prev) + (y-y_prev)*(y-y_prev) + (z-z_prev)*(z-z_prev)) ;
-
 }
+
+// double getAbsoluteScale(int frame_id, int sequence_id, double z_cal)	{
+  
+//   string line;
+//   int i = 0;
+//   ifstream myfile ("/home/avisingh/Datasets/KITTI_VO/00.txt");
+//   double x =0, y=0, z = 0;
+//   double x_prev, y_prev, z_prev;
+//   if (myfile.is_open())
+//   {
+//     while (( getline (myfile,line) ) && (i<=frame_id))
+//     {
+//       z_prev = z;
+//       x_prev = x;
+//       y_prev = y;
+//       std::istringstream in(line);
+//       //cout << line << '\n';
+//       for (int j=0; j<12; j++)  {
+//         in >> z ;
+//         if (j==7) y=z;
+//         if (j==3)  x=z;
+//       }
+      
+//       i++;
+//     }
+//     myfile.close();
+//   }
+
+//   else {
+//     cout << "Unable to open file";
+//     return 0;
+//   }
+
+//   return sqrt((x-x_prev)*(x-x_prev) + (y-y_prev)*(y-y_prev) + (z-z_prev)*(z-z_prev)) ;
+
+// }
 
 
 int main( int argc, char** argv )	{
+/*
+Usage: prog path_pattern fram_num pose_saving_path
 
+
+*/
+
+  char *pat, *pose_saving_path;
+  int max_frame;
+  if(argc<4)
+  {
+    cout<<"Usage: ./vo path_pattern fram_num pose_saving_path"<<endl;
+    return 0;
+  }
+  else
+  {
+    pat = argv[1];
+    max_frame = atoi(argv[2]);
+    pose_saving_path = argv[3];
+
+    cout<<pat<<" "<<max_frame<<" "<<pose_saving_path<<endl;
+  }  
+
+  ofstream ofile(pose_saving_path);
   Mat img_1, img_2;
   Mat R_f, t_f; //the final rotation and tranlation vectors containing the 
 
@@ -82,9 +127,14 @@ int main( int argc, char** argv )	{
   double scale = 1.00;
   char filename1[200];
   char filename2[200];
-  sprintf(filename1, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", 0);
-  sprintf(filename2, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", 1);
 
+  char * base = pat;"/home/decayale/DATA/road/test%04d.jpg";
+
+  // sprintf(filename1, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", 0);
+  // sprintf(filename2, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", 1);
+
+  sprintf(filename1, base, 0);
+  sprintf(filename2, base, 1);
   char text[100];
   int fontFace = FONT_HERSHEY_PLAIN;
   double fontScale = 1;
@@ -92,6 +142,7 @@ int main( int argc, char** argv )	{
   cv::Point textOrg(10, 50);
 
   //read the first two frames from the dataset
+
   Mat img_1_c = imread(filename1);
   Mat img_2_c = imread(filename2);
 
@@ -107,7 +158,7 @@ int main( int argc, char** argv )	{
   vector<Point2f> points1, points2;        //vectors to store the coordinates of the feature points
   featureDetection(img_1, points1);        //detect features in img_1
   vector<uchar> status;
-  featureTracking(img_1,img_2,points1,points2, status); //track those features to img_2
+  featureTracking(img_1,img_2,points1, points2, status); //track those features to img_2
 
   //TODO: add a fucntion to load these values directly from KITTI's calib files
   // WARNING: different sequences in the KITTI VO dataset have different intrinsic/extrinsic parameters
@@ -135,8 +186,10 @@ int main( int argc, char** argv )	{
 
   Mat traj = Mat::zeros(600, 600, CV_8UC3);
 
-  for(int numFrame=2; numFrame < MAX_FRAME; numFrame++)	{
-  	sprintf(filename, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", numFrame);
+  for(int numFrame=2; numFrame < max_frame; numFrame++)	{
+  	// sprintf(filename, "/home/avisingh/Datasets/KITTI_VO/00/image_2/%06d.png", numFrame);
+    sprintf(filename, base, numFrame);
+      cout<<filename<<endl;
     //cout << numFrame << endl;
   	Mat currImage_c = imread(filename);
   	cvtColor(currImage_c, currImage, COLOR_BGR2GRAY);
@@ -157,8 +210,8 @@ int main( int argc, char** argv )	{
   		currPts.at<double>(1,i) = currFeatures.at(i).y;
     }
 
-  	scale = getAbsoluteScale(numFrame, 0, t.at<double>(2));
-
+  	// scale = getAbsoluteScale(numFrame, 0, t.at<double>(2));
+    scale = 1;
     //cout << "Scale is " << scale << endl;
 
     if ((scale>0.1)&&(t.at<double>(2) > t.at<double>(0)) && (t.at<double>(2) > t.at<double>(1))) {
@@ -197,7 +250,8 @@ int main( int argc, char** argv )	{
 
     imshow( "Road facing camera", currImage_c );
     imshow( "Trajectory", traj );
-
+    
+    output(R_f, t_f, ofile);
     waitKey(1);
 
   }
@@ -206,8 +260,6 @@ int main( int argc, char** argv )	{
   double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
   cout << "Total time taken: " << elapsed_secs << "s" << endl;
 
-  //cout << R_f << endl;
-  //cout << t_f << endl;
 
   return 0;
 }
