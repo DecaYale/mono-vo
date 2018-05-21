@@ -101,11 +101,12 @@ Usage: prog path_pattern fram_num pose_saving_path
 
 */
 
-  char *pat, *pose_saving_path;
+  char *pat, *pose_saving_path, *intrinsics;
   int max_frame;
-  if(argc<4)
+  float fx, fy, px, py;
+  if(argc<5)
   {
-    cout<<"Usage: ./vo path_pattern fram_num pose_saving_path"<<endl;
+    cout<<"Usage: ./vo path_pattern fram_num pose_saving_path intrinsics"<<endl;
     return 0;
   }
   else
@@ -113,8 +114,13 @@ Usage: prog path_pattern fram_num pose_saving_path
     pat = argv[1];
     max_frame = atoi(argv[2]);
     pose_saving_path = argv[3];
-
-    cout<<pat<<" "<<max_frame<<" "<<pose_saving_path<<endl;
+    intrinsics = argv[4];
+    ifstream ifile(intrinsics);
+    if (ifile.is_open())
+      ifile>> fx>> fy >> px >> py;
+    else
+      cout<<"Cannot find intrinsic file!"<<endl;
+    cout<<pat<<" "<<max_frame<<" "<<pose_saving_path<<" "<<fx<<" "<<fy<<" "<<px<<" "<<py<<endl;
   }  
 
   ofstream ofile(pose_saving_path);
@@ -162,8 +168,8 @@ Usage: prog path_pattern fram_num pose_saving_path
 
   //TODO: add a fucntion to load these values directly from KITTI's calib files
   // WARNING: different sequences in the KITTI VO dataset have different intrinsic/extrinsic parameters
-  double focal = 718.8560;
-  cv::Point2d pp(607.1928, 185.2157);
+  double focal = fx; //718.8560;
+  cv::Point2d pp(px,py);//pp(607.1928, 185.2157);
   //recovering the pose and the essential matrix
   Mat E, R, t, mask;
   E = findEssentialMat(points2, points1, focal, pp, RANSAC, 0.999, 1.0, mask);

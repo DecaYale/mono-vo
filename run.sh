@@ -1,1 +1,1 @@
-build/vo "/home/decayale/DATA/road/test%04d.jpg" 100 "./pose.txt"
+build/vo "/home/decayale/DATA/road/test%04d.jpg" 100 "./pose.txt" "./intrinsics.txt"
